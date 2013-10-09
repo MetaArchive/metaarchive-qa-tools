@@ -26,3 +26,7 @@ be printed with the output.
   various hidden files, config files, .DS_store, tilde-prefixed backups, and 
   other likely-undesired files.
 * Filenames must not equal "Thumbs.db".
+
+## License
+
+See LICENSE.txt
