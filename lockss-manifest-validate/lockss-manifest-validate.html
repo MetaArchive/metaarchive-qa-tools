@@ -1,0 +1,173 @@
+<html>
+<head>
+	<title>LOCKSS/Manifest Validator</title>
+	<style>
+		body {
+			background: #f8f8f8;
+			font-family: Helvetica, Arial, sans-serif;
+			padding: 50px;
+		}
+		body > div {
+			background: #fcfcfc;
+			padding: 20px;
+		}
+		h1 {
+			margin-top: 0;
+		}
+		label {
+			display: inline-block;
+			width: 40%;
+			font-size: 80%;
+			font-weight: bold;
+		}
+		button {
+			padding:6px 24px;
+			margin: 20px 0;
+		}
+		fieldset {
+			border: 1px solid #eee;
+		}
+		legend {
+			border: 1px solid #ccc;
+			font-size: 80%;
+			padding:2px 4px;
+			background: #fefefe;
+		}
+		@media (min-width: 700px) {
+			body > div {
+				width: 660px;
+				margin: 0 auto;
+			}
+		}
+	</style>
+	<script>
+		var lockss_upload;
+		var manifest_upload;
+		var begin_btn;
+		var output_area;
+		function init() {
+			if (window.File && window.FileReader && window.FileList && window.Blob) {
+				// Great success! All the File APIs are supported.
+			} else {
+				alert('The File APIs are not fully supported in this browser. Try Chrome or Firefox.');
+			}
+			
+			lockss_upload = document.getElementById("lockss-upload");
+			manifest_upload = document.getElementById("manifest-upload");
+			begin_btn = document.getElementById("begin");
+			output_area = document.getElementById("output");
+			
+			onFileChange = function() {
+				begin_btn.disabled = (!lockss_upload.files[0] || !manifest_upload.files[0]);
+			}
+			lockss_upload.addEventListener("change", onFileChange);
+			manifest_upload.addEventListener("change", onFileChange);
+		}
+		
+		function begin() {
+			console.log("Beginning...");
+			
+			// Check files exist
+			if (!lockss_upload.files[0] || !manifest_upload.files[0]) {
+				alert("Select both files!");
+				return;
+			}
+			
+			var hashes = load_lockss_hashes(lockss_upload.files[0]);
+			//compare_manifest_hashes(hashes, manifest_upload.files[0]);
+		}
+		
+		function write_output(line) {
+			output_area.value += line + "\n";
+			console.log(line);
+		}
+		
+		function load_lockss_hashes(lockss_file) {
+			console.log("Entering load_lockss_hashes");
+			var prefix = 0;
+			var hashes = {};
+			var num_hashes = 0;
+			var reader = new FileReader();
+			reader.onload = function(e) {
+				var lines = e.target.result.split("\n");
+				console.log("Read " + lines.length + " lines from " + lockss_file.name);
+				var re = /([0-9A-F]{32})   (.+)/;
+				for (var i=0; i<lines.length; i++) {
+					m = lines[i].match(re);
+					if (m) {
+						if (!prefix) {
+							prefix = m[2].length + 1;
+							continue;
+						}
+						hashes[m[2].substring(prefix)] = m[1];
+						num_hashes++;
+					}
+				}
+				write_output("Found " + num_hashes + " hashes in HashCUS file");
+				if (num_hashes < 1)
+					alert("No hashes were found in the selected HashCUS.txt file. Check that the correct file was selected and try again.");
+				else
+					compare_manifest_hashes(hashes);
+			};
+			reader.readAsText(lockss_file);
+		}
+		
+		function compare_manifest_hashes(hashes) {
+			var manifest_upload = document.getElementById("manifest-upload");
+			var manifest_file = manifest_upload.files[0];
+
+			var reader = new FileReader();
+			reader.onload = function(e) {
+				var records = 0;
+				var errors = 0;
+				var nomatch = 0;
+				var lines = e.target.result.split("\n");
+				write_output("Read " + lines.length + " lines from " + manifest_file.name);
+				var re = /([0-9a-f]{32})  (.+)/;
+				for (var i=0; i<lines.length; i++) {
+					m = lines[i].match(re);
+					if (m) {
+						records++;
+						path = escape(m[2]); // TODO escape
+						if (!hashes[path]) {
+							write_output("No LOCKSS hash found for path: " + path);
+							errors++;
+						}
+						else if (m[1].toUpperCase() != hashes[path]) {
+							write_output("Hash mismatch for path " + path);
+							errors++;
+						}
+					}
+					else
+						nomatch++;
+				}
+				write_output("Compared " + records + " records, encountered " + errors + " errors.");
+				if (records < 1)
+					alert("No hashes were found in the selected manifest-md5.txt file. Check that the correct file was selected and try again.");
+				else
+					alert("Compared " + records + " records, encountered " + errors + " errors.");
+			}
+			reader.readAsText(manifest_file);
+		}
+	</script>
+</head>
+<body onload="init()">
+	<div>
+		<h1>Bag Hash Comparison Utility</h1>
+		<p>Select the HashCUS.txt file you've downloaded from LOCKSS:</p>
+		<div class="lockss upload-area">
+			<label name="lockss-file">LOCKSS HashCUS.txt file selection</label>
+			<input id="lockss-upload" type="file" name="lockss-file" />
+		</div>
+		<p>Select the manifest-md5.txt file from the bag:</p>
+		<div class="manifest upload-area">
+			<label name="lockss-file">Bag manifest-md5.txt file selection</label>
+			<input id="manifest-upload" type="file" name="manifest-file" />
+		</div>
+		<button id="begin" onclick="begin()" disabled>Compare</button>
+		<fieldset>
+			<legend>Output</legend>
+			<textarea id="output" cols=76 rows=16></textarea>
+		</fieldset>
+	</div>
+</body>
