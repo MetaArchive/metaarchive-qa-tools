@@ -71,6 +71,6 @@ if __name__ == "__main__":
     for category, filenames in matches.items():
         if len(filenames) > 0:
             if args.verbose:
-                print "=== %s ===" % category
+                print ("=== %s ===" % category)
             for filename in filenames:
-                print filename
+                print (filename)
