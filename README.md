@@ -1,4 +1,4 @@
-# MetaArchive QA Tools
+# [Archived] MetaArchive QA Tools
 
 Scripts to help with validating the quality of files in a collection before 
 being preserved.
